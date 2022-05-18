@@ -1,0 +1,11 @@
+### Read in prmtop and trajectory files
+parm /home/mark/Projects/HDAC1/ClassicalMD/00_WT/HDAC1_WT.prmtop
+trajin 
+### Move the structures to the origin using center of mass of 
+autoimage anchor :1-25
+### Remove solvent water
+strip :WAT
+### Remove all counterions
+strip :K+,Cl-
+### final command of the cpptraj input file should be "run" to execute all above queued tasks.
+run

@@ -1,0 +1,79 @@
+### Read in prmtop and trajectory files
+parm {prmtop}
+trajin {trajectory} 
+
+### Remove solvent water and all counterions from the trajectory to speed up analyses
+### Comment out next line if you want your analyses to include the water/counterions
+strip :K+,Cl-,WAT
+
+### Move the structures to the origin using center of mass of the sel_mask selection
+autoimage anchor {sel_mask}
+
+### Orient each frame referenced to the first to minimize overall RMSD of the sel_mask
+### then produce RMSD.dat, which is RMSD vs. Time (recommend line plot)
+rms first perres {sel_mask} out RMSD.dat
+
+### Calculate the fluctuation of residues in the sel_mask selection and output to
+### RMSF_ByRes.dat, which is Fluctuation vs. Residue number (recommend bar plot)
+atomicfluct RMSF_ByRes {sel_mask} out RMSF_ByRes.dat byres
+
+### Calculate correlated motion between all residue pairs in sel_mask and output
+### to correlation.dat, which is a 2D array of values between -1 and +1. (recommend heatmap)
+matrix correl name corrpath out correlation.dat {sel_mask} byres
+
+### covariance matrix for protein normal modes
+matrix covar name nma_protein {sel_mask}@CA
+diagmatrix nma_protein out nma_protein_covar.dat \
+vecs 100 reduce nmwiz mnwizvecs 100 \
+nmwizfile nma_prot_first_100_modes.nmd \
+nmwizmask {sel_mask}@CA
+
+### covariance matrix for nucleotide normal modes
+matrix covar name nma_nucleotide {sel_mask}@P
+diagmatrix nma_nucleotide out nma_nucleotide_covar.dat \
+vecs 100 reduce nmwiz mnwizvecs 100 \
+nmwizfile nma_nucleotides_first_100_modes.nmd \
+nmwizmask {sel_mask}@P
+
+### Hydrogen Bond Analysis for hydrogen bonds
+hbond dist 3.0 avgout HBond_intramolecular.dat
+
+### Hydrogen Bond Analysis for intermolecular hydrogen bonds ONLY
+### (useful if you want to see things like dimer interfaces or other
+### multi-molecule interactions 
+hbond dist 3.0 avgout HBond_intermolecular.dat nointramol
+
+### Radial Distribution Function for solvent waters (:WAT)
+### with bin separation of 0.5A and a maximum bin size of 10A.
+rdf out RDF.dat 0.5 10 :WAT
+
+#################### DATASETS FOR CLUSTERING ###########################
+### Distance Measurements between two atoms, or two selections 
+### (distances are between centers of mass)
+distance d1 {atom1} {atom2} out DISTANCE.dat
+
+### Angle Measurements between three atoms or selections
+angle a1 {atom1} {atom2} {atom3} out ANGLE.dat
+
+### Dihedral/Torsion Measurements between four atoms or selections
+dihedral t1 {atom1} {atom2} {atom3} {atom4} out DIHEDRAL.dat range360
+
+### Clustering (Requires datasets to cluster on beforehand)
+cluster kmeans clusters 5 \ # specifies 5 clusters desired.
+data t1,a1 \  # This is where the NAMED datasets to be clustered on are listed (comma-separated)
+out cnumvtime.dat \ # specifies which cluster number each frame belongs to.
+summary clustsummary.txt \ # summarizes each cluster
+info clustinfo.txt \ # writes additional cluster information
+repout clust \ # prefix of output cluster coordinates (clust.00001.rst7)
+repfmt restart \ # specifies the ".rst7" format and file extension
+bestrep centroid \ # representative frame for each cluster is closest to centroid of cluster.
+savenreps 1 \ # save one frame per cluster
+clustersvtime clustvtime.txt \ # writes the number of unique clusters seen over time below.
+cvtwindow 50 \ # timewindow is 50 frames for clustersvtime above.
+cpopvtime cpopvtime.dat # All cluster populations vs. time.
+
+
+
+### final command of the cpptraj input file should be "run" to execute all above queued tasks.
+run
+
